@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信支付全功能演示（JSAPI/H5）</title>
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+        .param {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .param-name {
+            font-weight: bold;
+            color: #09bb07;
+            display: inline-block;
+            width: 100px;
+        }
+        button {
+            background-color: #09bb07;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #07a905;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .tab {
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            margin-right: 5px;
+            background: #f1f1f1;
+        }
+        .tab.active {
+            background: #09bb07;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>微信支付全功能演示</h1>
+    
+    <!-- 选项卡 -->
+    <div>
+        <div class="tab active" onclick="switchTab('jsapi')">JSAPI支付</div>
+        <div class="tab" onclick="switchTab('h5')">H5支付模拟</div>
+    </div>
+
+    <!-- JSAPI 支付内容 -->
+    <div id="jsapi-content" class="tab-content active">
+        <h2>微信内H5支付（JSAPI）</h2>
+        <p>适用于微信公众号、小程序web-view等微信内置浏览器环境</p>
+        
+        <div class="container">
+            <h3>支付参数</h3>
+            <div class="param">
+                <span class="param-name">appId:</span> 
+                <span id="appId">wx32e4d3446c02b4b5</span>
+            </div>
+            <div class="param">
+                <span class="param-name">nonceStr:</span> 
+                <span id="nonceStr">17a3120e4e5fbdc3cb5b5f946809b06a</span>
+            </div>
+            <div class="param">
+                <span class="param-name">package:</span> 
+                <span id="package">prepay_id=wx1802271569459444afa630d38eef7a0001</span>
+            </div>
+            <div class="param">
+                <span class="param-name">paySign:</span> 
+                <span id="paySign">05E731388F8A37763370014FC73BA9E2</span>
+            </div>
+            <div class="param">
+                <span class="param-name">signType:</span> 
+                <span id="signType">MD5</span>
+            </div>
+            <div class="param">
+                <span class="param-name">timeStamp:</span> 
+                <span id="timeStamp">1747506435</span>
+            </div>
+            <div class="param">
+                <span class="param-name">payEnum:</span> 
+                <span id="payEnum">406</span>
+            </div>
+            
+            <button id="jsapiPayButton">调起微信支付</button>
+            <button id="checkEnvButton">检测微信环境</button>
+            
+            <div id="jsapiResult"></div>
+        </div>
+    </div>
+
+    <!-- H5 支付内容 -->
+    <div id="h5-content" class="tab-content">
+        <h2>微信外H5支付模拟</h2>
+        <p>适用于手机浏览器等非微信环境（需要后端支持）</p>
+        
+        <div class="container">
+            <div class="param">
+                <span class="param-name">prepay_id:</span> 
+                <span id="h5-prepayId">wx1802271569459444afa630d38eef7a0001</span>
+            </div>
+            
+            <button id="h5PayButton">模拟H5支付跳转</button>
+            <div id="h5Result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 切换选项卡
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-content`).classList.add('active');
+        }
+
+        // ================= JSAPI 支付逻辑 =================
+        document.getElementById('checkEnvButton').addEventListener('click', function() {
+            const resultDiv = document.getElementById('jsapiResult');
+            
+            if (typeof WeixinJSBridge === 'undefined' && typeof wx === 'undefined') {
+                resultDiv.innerHTML = '<p class="error">未检测到微信环境！请在微信内置浏览器中打开</p>';
+            } else {
+                resultDiv.innerHTML = '<p class="success">检测到微信环境，可以调起支付</p>';
+                document.getElementById('jsapiPayButton').disabled = false;
+            }
+        });
+
+        document.getElementById('jsapiPayButton').addEventListener('click', function() {
+            const resultDiv = document.getElementById('jsapiResult');
+            resultDiv.innerHTML = "正在调起支付...";
+            resultDiv.className = "";
+            
+            // 获取支付参数
+            const params = {
+                appId: document.getElementById('appId').innerText,
+                timeStamp: document.getElementById('timeStamp').innerText,
+                nonceStr: document.getElementById('nonceStr').innerText,
+                package: document.getElementById('package').innerText,
+                signType: document.getElementById('signType').innerText,
+                paySign: document.getElementById('paySign').innerText
+            };
+
+            // 新版JS-SDK API
+            if (typeof wx !== 'undefined' && wx.chooseWXPay) {
+                wx.chooseWXPay({
+                    ...params,
+                    success: (res) => {
+                        resultDiv.innerHTML = '<p class="success">支付成功！请以后端异步通知为准</p>';
+                        resultDiv.className = "success";
+                    },
+                    fail: (err) => {
+                        resultDiv.innerHTML = `<p class="error">支付失败: ${JSON.stringify(err)}</p>`;
+                        resultDiv.className = "error";
+                    }
+                });
+            } 
+            // 旧版WeixinJSBridge API
+            else if (typeof WeixinJSBridge !== 'undefined') {
+                WeixinJSBridge.invoke('getBrandWCPayRequest', params, (res) => {
+                    if (res.err_msg === 'get_brand_wcpay_request:ok') {
+                        resultDiv.innerHTML = '<p class="success">支付成功！请以后端异步通知为准</p>';
+                        resultDiv.className = "success";
+                    } else {
+                        resultDiv.innerHTML = `<p class="error">支付失败: ${res.err_msg}</p>`;
+                        resultDiv.className = "error";
+                    }
+                });
+            } else {
+                resultDiv.innerHTML = '<p class="error">无法调起支付，请确认在微信环境中</p>';
+                resultDiv.className = "error";
+            }
+        });
+
+        // ================= H5 支付逻辑 =================
+        document.getElementById('h5PayButton').addEventListener('click', function() {
+            const resultDiv = document.getElementById('h5Result');
+            resultDiv.innerHTML = '<p>正在模拟H5支付流程...</p>';
+            
+            setTimeout(() => {
+                resultDiv.innerHTML = `
+                    <p class="success">H5支付流程模拟：</p>
+                    <p>1. 后端返回 mweb_url: <code>https://wx.tenpay.com/xxx?prepay_id=wx1802271569459444afa630d38eef7a0001</code></p>
+                    <p>2. 实际场景会自动跳转到微信支付页面</p>
+                    <p>3. 用户完成支付后返回商户页面</p>
+                    <p><small>（注：当前为演示，不会真实跳转）</small></p>
+                `;
+            }, 1000);
+        });
+
+        // 初始化禁用支付按钮，先检测环境
+        document.getElementById('jsapiPayButton').disabled = true;
+    </script>
+</body>
+</html>
